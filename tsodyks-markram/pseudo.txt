@@ -1,0 +1,5 @@
+vars = init()
+
+while t < tmax:
+  vars = euler_step(ode, dt, vars)
+  t += dt
