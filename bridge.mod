@@ -1,0 +1,10 @@
+NEURON {
+  POINT_PROCESS my_clamp
+  NONSPECIFIC_CURRENT i
+}
+
+PARAMETER {
+    ii = 0
+}
+
+BREAKPOINT { i = ii }

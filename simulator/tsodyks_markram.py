@@ -1,10 +1,8 @@
 import dataclasses
-import os, sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.dirname(__file__))
-from simulator import Component
+from . import Component
 
 
 @dataclasses.dataclass
@@ -22,12 +20,14 @@ class TsodyksMarkramSynapse(Component):
         self.I: float = 0
         self.t: float = 0
 
-    def init(self, t0):
+    def init(self, t0, dt, tmax):
         self.__post_init__()
-        self._spike_buffer = np.array(self.spikes) - t0
+        self.spike_bins = iter(
+            np.histogram(self.spikes, int(tmax // dt) + 2, range=(0, tmax))[0]
+        )
 
     def step(self, dt):
-        self._flush_spikes(dt)
+        self._flush_spikes()
         self.u += self.du(dt)
         self.I += self.dI(dt)
         self.x += self.dx(dt)
@@ -41,10 +41,8 @@ class TsodyksMarkramSynapse(Component):
     def dI(self, dt):
         return -self.I / self.tau_s * dt + self.A * self.u * self.x * self._n_spikes
 
-    def _flush_spikes(self, dt):
-        pre = len(self._spike_buffer)
-        self._spike_buffer = self._spike_buffer[self._spike_buffer > dt] - dt
-        self._n_spikes = pre - len(self._spike_buffer)
+    def _flush_spikes(self):
+        self._n_spikes = next(self.spike_bins)
 
     def u_monitor(self):
         return self.u
@@ -54,3 +52,6 @@ class TsodyksMarkramSynapse(Component):
 
     def I_monitor(self):
         return self.I
+
+    def output(self):
+        return -self.I

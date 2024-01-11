@@ -2,12 +2,14 @@ import abc
 from collections import defaultdict
 from os import PathLike
 from typing import Callable, Union
+
+import numpy as np
 import plotly.graph_objs as go
 
 
 class Component:
     @abc.abstractmethod
-    def init(self, t0):
+    def init(self, t0, dt, tmax):
         pass
 
     @abc.abstractmethod
@@ -29,20 +31,23 @@ class Simulator:
         self._monitors[name] = monitor
 
     def run(self, t0: float, tmax: float, dt: float):
-        self.init(t0)
+        self.init(t0, dt, tmax)
         t = t0
         while t < tmax:
+            if t % 1 < dt:
+                print(t)
             self._step(dt)
             t += dt
             self._measure(t)
 
-    def init(self, t0: float):
+    def init(self, t0: float, dt: float, tmax: float):
         # Reset
-        self._time = []
-        self._measures = defaultdict(list)
+        self._time = np.empty((int((tmax - t0) // dt) + 3,))
+        self._ptr = 0
+        self._measures = defaultdict(lambda: np.empty((int((tmax - t0) // dt) + 3,)))
         # Init
         for component in self._components:
-            component.init(t0)
+            component.init(t0, dt, tmax)
         self._measure(t0)
 
     def _step(self, dt: float):
@@ -50,9 +55,10 @@ class Simulator:
             component.step(dt)
 
     def _measure(self, t: float):
-        self._time.append(t)
+        self._time[self._ptr] = t
         for name, monitor in self._monitors.items():
-            self._measures[name].append(monitor())
+            self._measures[name][self._ptr] = monitor()
+        self._ptr += 1
 
     def save(self, filename: Union[str, PathLike]):
         go.Figure(
